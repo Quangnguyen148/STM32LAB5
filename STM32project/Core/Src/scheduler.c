@@ -35,9 +35,29 @@ void SCH_Update(void){
 }
 
 void SCH_Dispatch_Tasks(void){
-	for (int i = 0; i < current_index_tasks; i++)
-		if (SCH_Tasks_Array[i].RunMe > 0){
-			SCH_Tasks_Array[i].RunMe --;
-			(*SCH_Tasks_Array[i].pTask)();
-		}
+	uint8_t i = 0;
+    while (i < current_index_tasks){
+        if (SCH_Tasks_Array[i].RunMe > 0){
+            SCH_Tasks_Array[i].RunMe--;
+            (*SCH_Tasks_Array[i].pTask)();
+            if (SCH_Tasks_Array[i].Period == 0){
+                SCH_Delete_Task(i);
+                continue;
+            }
+        }
+        i++;
+    }
+}
+
+/*unsigned char*/ void SCH_Delete_Task (uint8_t TASK_INDEX){
+    for (uint8_t i = TASK_INDEX; i < current_index_tasks - 1; i++){
+        SCH_Tasks_Array[i] = SCH_Tasks_Array[i + 1];
+        SCH_Tasks_Array[i].TaskID = i;
+    }
+    SCH_Tasks_Array[current_index_tasks - 1].pTask  = 0;
+    SCH_Tasks_Array[current_index_tasks - 1].Delay  = 0;
+    SCH_Tasks_Array[current_index_tasks - 1].Period = 0;
+    SCH_Tasks_Array[current_index_tasks - 1].RunMe  = 0;
+    SCH_Tasks_Array[current_index_tasks - 1].TaskID = 0;
+    current_index_tasks--;
 }
