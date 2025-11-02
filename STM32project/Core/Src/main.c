@@ -56,8 +56,24 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void ledtest(){
+void ledtest1(){
 	HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
+}
+
+void ledtest2(){
+	HAL_GPIO_TogglePin(LED_2_GPIO_Port, LED_2_Pin);
+}
+
+void ledtest3(){
+	HAL_GPIO_TogglePin(LED_3_GPIO_Port, LED_3_Pin);
+}
+
+void ledtest4(){
+	HAL_GPIO_TogglePin(LED_4_GPIO_Port, LED_4_Pin);
+}
+
+void ledtest5(){
+	HAL_GPIO_TogglePin(LED_5_GPIO_Port, LED_5_Pin);
 }
 /* USER CODE END 0 */
 
@@ -96,7 +112,12 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  SCH_Add_Task(ledtest, 50, 100);
+  SCH_Init();
+  SCH_Add_Task(ledtest1, 50, 50);
+  SCH_Add_Task(ledtest2, 100, 100);
+  SCH_Add_Task(ledtest3, 150, 150);
+  SCH_Add_Task(ledtest4, 200, 200);
+  SCH_Add_Task(ledtest5, 250, 250);
   while (1)
   {
 	  SCH_Dispatch_Tasks();
@@ -200,14 +221,17 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LED_RED_Pin|LED_2_Pin|LED_3_Pin|LED_4_Pin
+                          |LED_5_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : LED_RED_Pin */
-  GPIO_InitStruct.Pin = LED_RED_Pin;
+  /*Configure GPIO pins : LED_RED_Pin LED_2_Pin LED_3_Pin LED_4_Pin
+                           LED_5_Pin */
+  GPIO_InitStruct.Pin = LED_RED_Pin|LED_2_Pin|LED_3_Pin|LED_4_Pin
+                          |LED_5_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LED_RED_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 
