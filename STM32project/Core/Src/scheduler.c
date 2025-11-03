@@ -7,64 +7,67 @@
 
 #include "scheduler.h"
 
-static uint8_t head_idx;
 /*unsigned char Error_code_G = 0;*/
+static uint32_t newTaskID = 0;
+static uint32_t Get_New_Task_ID(void);
 
-static void insert(uint8_t idx, uint32_t delay){
-    SCH_Tasks_Array[idx].Delay = delay;
-    SCH_Tasks_Array[idx].next  = NO_TASK_ID;
-    SCH_Tasks_Array[idx].prev  = NO_TASK_ID;
-    if (head_idx == NO_TASK_ID) {
-        head_idx = idx;
-        return;
-    }
-    uint8_t cur = head_idx;
-    uint8_t prev = NO_TASK_ID;
-    //trừ dần delay theo giá trị của các node đi trước
-    while (cur != NO_TASK_ID && delay >= SCH_Tasks_Array[cur].Delay) {
-        delay = delay - SCH_Tasks_Array[cur].Delay;
-        prev = cur;
-        cur  = SCH_Tasks_Array[cur].next;
-    }
-    // set giá trị cho node mới
-    SCH_Tasks_Array[idx].Delay = delay;
-    // nối vào list
-    SCH_Tasks_Array[idx].next = cur;
-    SCH_Tasks_Array[idx].prev = prev;
-    if (prev == NO_TASK_ID) head_idx = idx;
-    	else SCH_Tasks_Array[prev].next = idx;
-    if (cur != NO_TASK_ID) {
-        SCH_Tasks_Array[cur].prev  = idx;
-        //giảm giá trị đi 'delay' node sau vì đã chen node mới trước nó
-        SCH_Tasks_Array[cur].Delay = SCH_Tasks_Array[cur].Delay - delay;
-    }
+uint32_t SCH_Add_Task(void (*pFunction)(), uint32_t DELAY, uint32_t PERIOD){
+	uint8_t cur_idx = 0;
+	while (cur_idx < SCH_MAX_TASKS && SCH_Tasks_Array[cur_idx].pTask != 0 && DELAY >= SCH_Tasks_Array[cur_idx].Delay){
+		DELAY = DELAY - SCH_Tasks_Array[cur_idx].Delay;
+		cur_idx++;
+	}
+	uint8_t end = cur_idx;
+	while (end < SCH_MAX_TASKS && SCH_Tasks_Array[end].pTask != 0) end++;
+	if (end == SCH_MAX_TASKS) return 0xFF;
+	for (uint8_t i = end; i > cur_idx; i--)
+		SCH_Tasks_Array[i] = SCH_Tasks_Array[i - 1];
+	SCH_Tasks_Array[cur_idx].pTask = pFunction;
+	SCH_Tasks_Array[cur_idx].Delay = DELAY;
+	SCH_Tasks_Array[cur_idx].Period = PERIOD;
+	if(SCH_Tasks_Array[cur_idx].Delay == 0)
+		SCH_Tasks_Array[cur_idx].RunMe = 1;
+	else SCH_Tasks_Array[cur_idx].RunMe = 0;
+	SCH_Tasks_Array[cur_idx].TaskID = Get_New_Task_ID();
+	if (cur_idx < end) SCH_Tasks_Array[cur_idx + 1].Delay -= DELAY;
+	return SCH_Tasks_Array[cur_idx].TaskID;
 }
 
-//remove chỉ tách node khỏi list chứ không xóa khỏi mảng
-static void remove(uint8_t idx){
-    uint8_t prev = SCH_Tasks_Array[idx].prev;
-    uint8_t next = SCH_Tasks_Array[idx].next;
-    if (next != NO_TASK_ID){
-        SCH_Tasks_Array[next].Delay = SCH_Tasks_Array[next].Delay + SCH_Tasks_Array[idx].Delay;
-        SCH_Tasks_Array[next].prev = prev;
-    }
-    if (prev != NO_TASK_ID) SCH_Tasks_Array[prev].next = next;
-    	else head_idx = next;
-    SCH_Tasks_Array[idx].next = NO_TASK_ID;
-    SCH_Tasks_Array[idx].prev = NO_TASK_ID;
+
+uint8_t SCH_Delete_Task(uint32_t taskID){
+	uint8_t Return_code = 0;
+	uint8_t deleted_task;
+	if (taskID != NO_TASK_ID){
+		for (deleted_task = 0; deleted_task < SCH_MAX_TASKS; deleted_task++){
+			if (SCH_Tasks_Array[deleted_task].TaskID == taskID){
+				Return_code = 1;
+				if (deleted_task < SCH_MAX_TASKS - 1 && SCH_Tasks_Array[deleted_task+1].pTask != 0)
+					SCH_Tasks_Array[deleted_task+1].Delay = SCH_Tasks_Array[deleted_task+1].Delay + SCH_Tasks_Array[deleted_task].Delay;
+
+				uint8_t task_idx = deleted_task;
+				while (task_idx + 1 < SCH_MAX_TASKS && SCH_Tasks_Array[task_idx + 1].pTask != 0) {
+					SCH_Tasks_Array[task_idx] = SCH_Tasks_Array[task_idx + 1];
+					task_idx++;
+				}
+				SCH_Tasks_Array[task_idx].pTask  = 0;
+				SCH_Tasks_Array[task_idx].Delay  = 0;
+				SCH_Tasks_Array[task_idx].Period = 0;
+				SCH_Tasks_Array[task_idx].RunMe  = 0;
+				SCH_Tasks_Array[task_idx].TaskID = NO_TASK_ID;
+				return Return_code;
+			}
+		}
+	}
+	return Return_code;
 }
 
 void SCH_Init(void){
-    head_idx = NO_TASK_ID;
     for (uint8_t i = 0; i < SCH_MAX_TASKS; i++) {
         SCH_Tasks_Array[i].pTask  = 0;
         SCH_Tasks_Array[i].Delay  = 0;
         SCH_Tasks_Array[i].Period = 0;
         SCH_Tasks_Array[i].RunMe  = 0;
-        SCH_Tasks_Array[i].TaskID = i;
-        //SCH_Tasks_Array[i].used = 0;
-        SCH_Tasks_Array[i].next   = NO_TASK_ID;
-        SCH_Tasks_Array[i].prev   = NO_TASK_ID;
+        SCH_Tasks_Array[i].TaskID = NO_TASK_ID;
     }
 }
 
@@ -114,9 +117,9 @@ unsigned char SCH_Add_Task(void (* pFunction)(), unsigned int DELAY, unsigned in
     return Index;
 }*/
 
-uint8_t SCH_Add_Task(void (*pFunction)(), uint32_t DELAY, uint32_t PERIOD) {
-    /*int16_t slot = find_free_slot();
-    if (slot < 0) return NO_TASK_ID;*/
+/*uint8_t SCH_Add_Task(void (*pFunction)(), uint32_t DELAY, uint32_t PERIOD) {
+    int16_t slot = find_free_slot();
+    if (slot < 0) return NO_TASK_ID;
 	uint8_t index = 0;
 	while((SCH_Tasks_Array[index].pTask != 0) && (index < SCH_MAX_TASKS))
 		index++;
@@ -130,7 +133,7 @@ uint8_t SCH_Add_Task(void (*pFunction)(), uint32_t DELAY, uint32_t PERIOD) {
 
     insert(index, DELAY);
     return index;
-}
+}*/
 
 /*void SCH_Update(void){
 	for (int i = 0; i < current_index_tasks; i++){
@@ -165,9 +168,14 @@ void SCH_Update(void){
 }*/
 
 void SCH_Update(void) {
-    if (head_idx == NO_TASK_ID) return;
-    if (SCH_Tasks_Array[head_idx].Delay > 0)
-        SCH_Tasks_Array[head_idx].Delay--;
+	if (SCH_Tasks_Array[0].pTask != 0 && SCH_Tasks_Array[0].RunMe == 0) {
+		if(SCH_Tasks_Array[0].Delay > 0){
+			SCH_Tasks_Array[0].Delay = SCH_Tasks_Array[0].Delay - 1;
+		}
+		if (SCH_Tasks_Array[0].Delay == 0) {
+			SCH_Tasks_Array[0].RunMe = 1;
+		}
+	}
 }
 
 /*void SCH_Dispatch_Tasks(void){
@@ -208,7 +216,7 @@ void SCH_Dispatch_Tasks(void)
 }*/
 
 void SCH_Dispatch_Tasks(void) {
-    while (head_idx != NO_TASK_ID && SCH_Tasks_Array[head_idx].Delay == 0) {
+/*    while (head_idx != NO_TASK_ID && SCH_Tasks_Array[head_idx].Delay == 0) {
         uint8_t idx = head_idx;
         // tách node khỏi list trước khi chạy
         remove(idx);
@@ -230,9 +238,27 @@ void SCH_Dispatch_Tasks(void) {
             t->next   = NO_TASK_ID;
             t->prev   = NO_TASK_ID;
         }
-    }
+    }*/
+	if(SCH_Tasks_Array[0].RunMe > 0) {
+		(*SCH_Tasks_Array[0].pTask)(); // Run the task
+		SCH_Tasks_Array[0].RunMe = 0; // Reset / reduce RunMe flag
+		sTasks temtask = SCH_Tasks_Array[0];
+		SCH_Delete_Task(temtask.TaskID);
+		if (temtask.Period != 0) {
+			SCH_Add_Task(temtask.pTask, temtask.Period, temtask.Period);
+		}
+	}
 }
 
+static uint32_t Get_New_Task_ID(void){
+	newTaskID++;
+	if(newTaskID == NO_TASK_ID){
+		newTaskID++;
+	}
+	return newTaskID;
+}
+
+/*
 void SCH_Delete_Task (uint8_t TASK_INDEX) {
     if (TASK_INDEX >= SCH_MAX_TASKS) return;
     sTasks *t = &SCH_Tasks_Array[TASK_INDEX];
@@ -246,6 +272,7 @@ void SCH_Delete_Task (uint8_t TASK_INDEX) {
     t->next   = NO_TASK_ID;
     t->prev   = NO_TASK_ID;
 }
+*/
 
 /*void SCH_Delete_Task (uint8_t TASK_INDEX){
     for (uint8_t i = TASK_INDEX; i < current_index_tasks - 1; i++){

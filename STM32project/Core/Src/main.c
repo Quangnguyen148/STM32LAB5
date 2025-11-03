@@ -113,11 +113,12 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   SCH_Init();
+  SCH_Add_Task(ledtest5, 250, 250);
   SCH_Add_Task(ledtest1, 50, 50);
   SCH_Add_Task(ledtest2, 100, 100);
-  SCH_Add_Task(ledtest3, 150, 150);
   SCH_Add_Task(ledtest4, 200, 200);
-  SCH_Add_Task(ledtest5, 250, 250);
+  SCH_Add_Task(ledtest3, 150, 150);
+
   while (1)
   {
 	  SCH_Dispatch_Tasks();
